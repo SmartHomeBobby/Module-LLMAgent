@@ -15,6 +15,8 @@ MQTT_BROKER = os.getenv("MQTT_BROKER", "127.0.0.1")
 MQTT_PORT = int(os.getenv("MQTT_PORT", 1883))
 MQTT_USER = os.getenv("MQTT_USER", "")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "")
+MQTT_TOPIC_REQUEST = os.getenv("MQTT_TOPIC_REQUEST", "smarthomebobby/llm/request")
+MQTT_TOPIC_RESPONSE = os.getenv("MQTT_TOPIC_RESPONSE", "smarthomebobby/llm/response")
 AGENT_HOST_NAME = os.getenv("AGENT_HOST_NAME", "local-python-agent")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
@@ -93,7 +95,7 @@ def handle_request(payload):
         event = json.dumps(create_response_event(
             trace_id, priority, response_text, elapsed))
         result, mid = client.publish(
-            "smarthomebobby/llm/response", event, qos=0)
+            MQTT_TOPIC_RESPONSE, event, qos=0)
         print(f"[{trace_id}] Published mid={mid} rc={result}")
     except Exception as e:
         print(f"[{payload.get('EventId', 'unknown')}] Error: {e}")
@@ -102,8 +104,8 @@ def handle_request(payload):
 def on_connect(client_local, userdata, flags, rc, properties=None):
     print(f"Connected rc={rc}")
     if rc == 0:
-        client_local.subscribe("smarthomebobby/llm/request")
-        print("Subscribed")
+        client_local.subscribe(MQTT_TOPIC_REQUEST)
+        print(f"Subscribed to topic: {MQTT_TOPIC_REQUEST}")
 
 
 def on_message(client_local, userdata, msg):
