@@ -95,7 +95,7 @@ def handle_request(payload):
         event = json.dumps(create_response_event(
             trace_id, priority, response_text, elapsed))
         result, mid = client.publish(
-            MQTT_TOPIC_RESPONSE, event, qos=0)
+            MQTT_TOPIC_RESPONSE, event, qos=2)
         print(f"[{trace_id}] Published mid={mid} rc={result}")
     except Exception as e:
         print(f"[{payload.get('EventId', 'unknown')}] Error: {e}")
@@ -104,8 +104,8 @@ def handle_request(payload):
 def on_connect(client_local, userdata, flags, rc, properties=None):
     print(f"Connected rc={rc}")
     if rc == 0:
-        client_local.subscribe(MQTT_TOPIC_REQUEST)
-        print(f"Subscribed to topic: {MQTT_TOPIC_REQUEST}")
+        client_local.subscribe(MQTT_TOPIC_REQUEST, qos=2)
+        print(f"Subscribed to topic: {MQTT_TOPIC_REQUEST} with QoS 2")
 
 
 def on_message(client_local, userdata, msg):
@@ -132,10 +132,15 @@ def on_log(client_local, userdata, level, buf):
 def main():
     global client
     from paho.mqtt.client import CallbackAPIVersion
+    
+    client_id = f"llm_agent_{AGENT_HOST_NAME}"
+    
     try:
-        client = mqtt.Client(CallbackAPIVersion.VERSION2)
+        # paho-mqtt 2.x interface
+        client = mqtt.Client(CallbackAPIVersion.VERSION2, client_id=client_id, clean_session=False)
     except:
-        client = mqtt.Client()
+        # paho-mqtt 1.x interface
+        client = mqtt.Client(client_id=client_id, clean_session=False)
 
     client.on_connect = on_connect
     client.on_message = on_message  # Correct sig: no properties
