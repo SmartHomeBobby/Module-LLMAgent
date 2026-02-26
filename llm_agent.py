@@ -64,11 +64,21 @@ def create_response_event(trace_id: str, priority: int, response_text: str, elap
 
 # Global client for thread-safety
 client = None
+active_requests = 0
+active_requests_lock = threading.Lock()
 
 
 def handle_request(payload):
     """Run in separate thread to unblock MQTT loop."""
-    global client
+    global client, active_requests
+    
+    with active_requests_lock:
+        active_requests += 1
+        current_active = active_requests
+        
+    trace_id = payload.get("TraceId", payload.get("traceId", str(uuid.uuid4())))
+    print(f"[{trace_id}] Started processing. Total active LLM requests: {current_active}")
+
     try:
         request_text = payload.get("Request", payload.get("request", ""))
         if not request_text:
@@ -76,8 +86,6 @@ def handle_request(payload):
             return
         request_type = payload.get(
             "RequestType", payload.get("requestType", 0))
-        trace_id = payload.get("TraceId", payload.get(
-            "traceId", str(uuid.uuid4())))
         priority = payload.get("Priority", payload.get("priority", 2))
 
         target_model = MODEL_MAPPING.get(request_type, DEFAULT_MODEL)
@@ -99,6 +107,11 @@ def handle_request(payload):
         print(f"[{trace_id}] Published mid={mid} rc={result}")
     except Exception as e:
         print(f"[{payload.get('EventId', 'unknown')}] Error: {e}")
+    finally:
+        with active_requests_lock:
+            active_requests -= 1
+            remaining = active_requests
+        print(f"[{trace_id}] Finished processing. Remaining active LLM requests: {remaining}")
 
 
 def on_connect(client_local, userdata, flags, rc, properties=None):
