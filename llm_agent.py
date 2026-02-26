@@ -3,10 +3,22 @@ import json
 import uuid
 import time
 import threading
+import builtins
 from datetime import datetime
 import paho.mqtt.client as mqtt
 from dotenv import load_dotenv
 import ollama
+
+original_print = builtins.print
+
+def timestamped_print(*args, **kwargs):
+    if not args and not kwargs:
+        original_print()
+    else:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        original_print(f"[{timestamp}]", *args, **kwargs)
+
+builtins.print = timestamped_print
 
 # Load environment variables
 load_dotenv()
