@@ -94,9 +94,25 @@ def handle_request(payload):
 
         start_time = time.time()
         print(f"[{trace_id}] Generating response...")
-        response = ollama.generate(
-            model=target_model, prompt=request_text, options={"keep_alive": -1})
-        response_text = response.get("response", "")
+        
+        import sys
+        
+        response_stream = ollama.generate(
+            model=target_model, 
+            prompt=request_text, 
+            options={"keep_alive": -1},
+            stream=True
+        )
+        
+        response_text = ""
+        for chunk in response_stream:
+            text_chunk = chunk.get("response", "")
+            if text_chunk:
+                response_text += text_chunk
+                sys.stdout.write(text_chunk)
+                sys.stdout.flush()
+        
+        print() # New line after the streamed response
         elapsed = time.time() - start_time
 
         print(f"[{trace_id}] Done in {elapsed:.2f}s")
